@@ -1,0 +1,26 @@
+Runtime/BCL changes for Windows 9x.
+
+1) external/corefx/src/System.IO.FileSystem/src/System/IO/Enumeration/FileSystemEnumerableFactory.cs
+   The NT enumerator opens directory handles with CreateFile(FILE_FLAG_BACKUP_SEMANTICS)
+   and NtQueryDirectoryFile.  Win9x supports neither (no directory handles, no ntdll),
+   so Directory.GetFiles/Enumerate* failed with ERROR_INVALID_FUNCTION.  Added a
+   FindFirstFileW/FindNextFileW based enumeration (Win9xEnumerate*) used by
+   UserFiles/UserDirectories/UserEntries when the OS major version is below 5.
+
+2) external/corefx/src/System.IO.FileSystem/src/System/IO/Directory.cs
+   Directory.Delete(recursive) relied on the same NT path (including \?\-prefixed
+   children).  Added Win9xDelete: walk entries with the managed enumeration fallback,
+   delete files with File.Delete and subdirectories recursively, then remove the
+   directory with the normal non-recursive path.
+
+3) mcs/class/System/System.Net.Sockets/Socket.cs
+   Socket.IsProtocolSupported calls NetworkInterface.GetAllNetworkInterfaces, whose
+   Win32 factory is only implemented for Windows >= 5.1 and throws
+   NotImplementedException below that, so creating any Socket failed.  Return false
+   (no IPv6) on Windows 9x.
+
+Supporting shim changes (win98/k32x.dll, not part of the Mono tree):
+   - native wrappers for CreateDirectoryW/CreateFileW/DeleteFileW/RemoveDirectoryW/
+     FindFirstFileW/FindNextFileW/FindFirstFileExW/GetFileAttributes(W/Ex)/CopyFileW/
+     MoveFileW that strip \?\ / \??\ extended-length prefixes and use the ANSI APIs;
+   - FindFirstFileExW accepts FindExInfoBasic (corefx uses it).

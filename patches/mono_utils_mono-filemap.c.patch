@@ -1,0 +1,11 @@
+--- /d/mono/mono/utils/mono-filemap.c	2026-07-19 19:06:41.218078300 +0800
++++ mono/utils/mono-filemap.c	2026-10-23 19:08:10.878352500 +0800
+@@ -34,6 +34,8 @@
+ 	if (wname == NULL)
+ 		return NULL;
+ 	result = (MonoFileMap *) _wfopen ((wchar_t *) wname, L"rb");
++	if (result == NULL)
++		result = (MonoFileMap *) fopen (name, "rb");  /* Win9x: _wfopen is broken */
+ 	g_free (wname);
+ 	return result;
+ #else

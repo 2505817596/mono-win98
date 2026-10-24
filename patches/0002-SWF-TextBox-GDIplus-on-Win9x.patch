@@ -1,0 +1,25 @@
+mcs/class/System.Windows.Forms/System.Windows.Forms/TextBoxTextRenderer.cs:
+use GDI+ text rendering for TextBox on Windows 9x/ME.
+
+On Windows, TextBox draws its document through TextRenderer (GDI, i.e.
+user32!DrawTextW via MSLU).  On the Win98 build this silently renders
+nothing: the TextBox keeps its Text property and accepts typed input, but
+the control's client area stays blank.  Fall back to Graphics.DrawString
+(GDI+), which is what Mono already uses on Unix, when the OS major version
+is below 5.
+
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/TextBoxTextRenderer.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/TextBoxTextRenderer.cs
+@@ -50,6 +50,12 @@
+ 			if (platform == 4 || platform == 128 || platform == 6)
+ 				use_textrenderer = false;
+ 			else
+ 				use_textrenderer = true;
++
++			// Win9x/ME: the GDI path (user32!DrawTextW via MSLU) silently
++			// draws nothing here, so fall back to GDI+ text rendering.
++			if (Environment.OSVersion.Version.Major < 5)
++				use_textrenderer = false;
+ 
+ 			// windows 2000 doesn't draw with gdi if bounds are In32.MaxValue
+ 			max_size = new Size (Int16.MaxValue, Int16.MaxValue);

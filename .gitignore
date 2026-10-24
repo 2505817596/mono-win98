@@ -1,0 +1,33 @@
+# build outputs and binary artifacts
+out/
+scratch/
+src/
+tools/
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.mdb
+*.o
+*.lo
+*.la
+*.lib
+*.a
+*.zip
+
+# generated images / logs
+*.png
+*.log
+
+# editor / OS noise
+.vs/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# keep patch files and text docs
+!patches/*.patch
+!docs/*.txt
+!docs/*.md
+!*.md

@@ -1,0 +1,19 @@
+--- /d/mono/mono/metadata/domain.c	2026-07-19 19:06:40.894367900 +0800
++++ mono/metadata/domain.c	2026-10-23 19:00:48.149605000 +0800
+@@ -594,6 +594,7 @@
+ 		current_runtime = (MonoRuntimeInfo*)tmp->data;
+ 		g_assert (current_runtime);
+ 		ass = mono_assembly_load_corlib (current_runtime, &status);
++		{ int e = errno; g_printerr ("MONO98: corlib status=%d errno=%d ass=%p | ", (int) status, e, (void*) ass); }
+ 		if (status != MONO_IMAGE_OK && status != MONO_IMAGE_ERROR_ERRNO)
+ 			break;
+ 		tmp = tmp->next;
+@@ -922,7 +923,7 @@
+  * \returns the current domain
+  */
+ MonoDomain *
+-mono_domain_get (void)
++mono_domain_get ()
+ {
+ 	return GET_APPDOMAIN ();
+ }

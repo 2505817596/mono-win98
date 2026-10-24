@@ -1,0 +1,18 @@
+mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs:
+recognize message 0x173 as WM_ASYNC_MESSAGE on Windows 9x.
+
+Control.Invoke/BeginInvoke queue an AsyncMethodData by posting WM_USER+3
+(WM_ASYNC_MESSAGE, 0x0403) to Mono's foster window.  Windows 98's user32
+rewrites that message number to 0x173 when GetMessageA returns it, so the
+case for 0x403 never matched: the async method was never executed and
+Control.Invoke blocked forever (BeginInvoke silently did nothing).
+
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs
+@@ -2097,7 +2097,8 @@
+-				case Msg.WM_ASYNC_MESSAGE: {
++				case Msg.WM_ASYNC_MESSAGE:
++				case (Msg)0x173: { // Win9x user32 returns WM_USER+3 as 0x173 from GetMessageA
+ 					XplatUIDriverSupport.ExecuteClientMessage((GCHandle)msg.lParam);
+ 					break;
+ 				}

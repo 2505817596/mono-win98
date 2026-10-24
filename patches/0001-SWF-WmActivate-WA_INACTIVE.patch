@@ -1,0 +1,27 @@
+mcs/class/System.Windows.Forms/System.Windows.Forms/Form.cs: avoid infinite
+activation recursion on Win9x when a modal dialog is shown.
+
+Win9x delivers WM_ACTIVATE(WA_INACTIVE) synchronously to the (disabled) owner
+while the dialog is being activated.  WmActivate re-activated the top modal
+dialog regardless of wParam, producing:
+
+    Form.Activate -> XplatUI.Activate -> WM_ACTIVATE(WA_INACTIVE) -> Form.Activate ...
+
+until the stack overflowed (SEH c00000fd).  Only bounce activation back when
+the disabled form is actually being activated.
+
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/Form.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/Form.cs
+@@ -2630,7 +2630,12 @@
+ 		private void WmActivate (ref Message m)
+ 		{
+-			if (!this.Enabled && modal_dialogs.Count > 0)
++			// Only steal activation back to the modal dialog when someone is
++			// actually trying to activate this (disabled) form.  Win9x delivers
++			// WM_ACTIVATE(WA_INACTIVE) synchronously while activating the dialog;
++			// re-activating the dialog from there recurses until the stack dies.
++			if (!this.Enabled && modal_dialogs.Count > 0 &&
++			    m.WParam != (IntPtr)WindowActiveFlags.WA_INACTIVE)
+ 			{
+ 				(modal_dialogs[modal_dialogs.Count -1] as Form).Activate ();
+ 				return; // prevent Activating of disabled form.

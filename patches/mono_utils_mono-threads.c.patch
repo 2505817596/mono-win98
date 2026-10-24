@@ -1,0 +1,72 @@
+--- /d/mono/mono/utils/mono-threads.c	2026-07-19 19:06:41.232344000 +0800
++++ mono/utils/mono-threads.c	2026-10-23 18:18:23.038019000 +0800
+@@ -549,6 +549,15 @@
+ 	mono_thread_info_suspend_lock ();
+ 	/*If this fail it means a given thread has been registered twice, which doesn't make sense. */
+ 	result = mono_thread_info_insert (info);
++	if (!result) {
++		/* Win9x reuses thread ids aggressively; drop a stale registration. */
++		MonoThreadInfo *old = mono_thread_info_lookup (mono_native_thread_id_get ());
++		if (old && old != info) {
++			mono_thread_info_remove (old);
++			result = mono_thread_info_insert (info);
++		}
++	}
++	if (!result) g_printerr ("MONO98: INSFAIL tid=%lu sid=%d | ", GetCurrentThreadId (), info->small_id);
+ 	g_assert (result);
+ 	mono_thread_info_suspend_unlock ();
+ 
+@@ -727,6 +736,10 @@
+ 	gpointer val = mono_native_tls_get_value (small_id_key);
+ 	if (!val)
+ 		return -1;
++	/* Win9x: TlsGetValue may return stale data from another component that used
++	 * this slot before. A valid value is (small_id + 1) with small_id < 16384. */
++	if (((uintptr_t) val) >> 15)
++		return -1;
+ 	return GPOINTER_TO_INT (val) - 1;
+ #endif
+ }
+@@ -755,13 +768,16 @@
+ 	g_assert (mono_threads_inited);
+ 
+ 	info = (MonoThreadInfo *) mono_native_tls_get_value (thread_info_key);
++	g_printerr ("MONO98: attach tid=%lu tls=%p | ", GetCurrentThreadId (), info);
+ 	if (!info) {
+ 		info = (MonoThreadInfo *) g_malloc0 (thread_info_size);
+ 		THREADS_DEBUG ("attaching %p\n", info);
+ 		if (!register_thread (info)) {
++			g_printerr ("MONO98: regfail tid=%lu | ", GetCurrentThreadId ());
+ 			g_free (info);
+ 			return NULL;
+ 		}
++		g_printerr ("MONO98: attach ok tid=%lu sid=%d | ", GetCurrentThreadId (), info->small_id);
+ 	}
+ 
+ 	return info;
+@@ -946,7 +962,7 @@
+ }
+ 
+ void
+-mono_thread_info_cleanup (void)
++mono_thread_info_cleanup ()
+ {
+ 	mono_native_tls_free (thread_info_key);
+ 	mono_native_tls_free (thread_exited_key);
+@@ -976,6 +992,7 @@
+ #endif
+ 	g_assert (res);
+ 
++	g_printerr ("MONO98: keys info=%lu exited=%lu small=%d | ", (unsigned long) thread_info_key, (unsigned long) thread_exited_key, (int) small_id_key);
+ 	if ((sleepLimit = g_getenv ("MONO_SLEEP_ABORT_LIMIT")) != NULL) {
+ 		mono_set_errno (0);
+ 		long threshold = strtol(sleepLimit, NULL, 10);
+@@ -2083,6 +2100,8 @@
+ gboolean
+ mono_thread_info_is_current (MonoThreadInfo *info)
+ {
++	if ((gpointer) info == (gpointer) -1)
++		g_printerr ("MONO98: is_current(-1) caller=%p | ", __builtin_return_address (0));
+ 	return mono_thread_info_get_tid (info) == mono_native_thread_id_get ();
+ }
+ 

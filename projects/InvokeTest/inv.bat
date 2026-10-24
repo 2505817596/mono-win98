@@ -1,0 +1,9 @@
+@echo off
+if "%MONO_HOME%"=="" set MONO_HOME=C:\MONO
+if "%APP_DIR%"=="" set APP_DIR=%~dp0
+set MONO_PATH=%MONO_HOME%\lib\mono\4.5
+set MONO_DEBUG=use-fallback-tls
+set MONO_THREADS_SUSPEND=preemptive
+set MONO98_ASYNC_TRACE=1
+del C:\ASYNC.TXT
+"%MONO_HOME%\bin\mono.exe" "%APP_DIR%\inv.exe" > C:\INV.TXT

@@ -1,0 +1,19 @@
+LIBRARY w98adv32.dll
+EXPORTS
+    AllocateAndInitializeSid=ADVAPI32.AllocateAndInitializeSid
+    BuildTrusteeWithSidW=ADVAPI32.BuildTrusteeWithSidW
+    CopySid=ADVAPI32.CopySid
+    CreateProcessWithLogonW
+    DuplicateToken=ADVAPI32.DuplicateToken
+    FreeSid=ADVAPI32.FreeSid
+    GetEffectiveRightsFromAclW
+    GetLengthSid=ADVAPI32.GetLengthSid
+    GetNamedSecurityInfoW
+    GetTokenInformation=ADVAPI32.GetTokenInformation
+    ImpersonateLoggedOnUser=ADVAPI32.ImpersonateLoggedOnUser
+    LookupAccountSidW=ADVAPI32.LookupAccountSidW
+    OpenProcessToken=ADVAPI32.OpenProcessToken
+    OpenThreadToken=ADVAPI32.OpenThreadToken
+    RevertToSelf=ADVAPI32.RevertToSelf
+    SetEntriesInAclW
+    SetNamedSecurityInfoW
