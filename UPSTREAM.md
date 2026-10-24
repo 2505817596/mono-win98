@@ -32,6 +32,9 @@ git submodule update --init --recursive
 
 The series was checked by applying it to this tree and comparing the result
 with the reference working tree: all 25 patches apply cleanly and reproduce
-the changes byte-for-byte (line endings normalised).
+the changes byte-for-byte (line endings normalised).  A few mono files are
+stored with CRLF endings (e.g. `TextBoxTextRenderer.cs`); the patches are
+LF-normalised, so `win98/verify-patches.sh` converts the files touched by
+the series to LF before applying.  This only changes line endings.
 
 CI runs the same check on every push (see `.github/workflows/build.yml`).

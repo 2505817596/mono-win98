@@ -19,10 +19,18 @@ build, import redirection) and `win98/build-shims.sh` (all shim DLLs).
 ## 1. Patch the mono source
 
 Apply the patch series in `patches/` (build-system fixes, Win9x TLS/threads/GC
-fixes, SEH logging, WinForms fixes). The file names map to the paths, e.g.
-`mono_utils_mono-tls.h.patch` applies to `mono/utils/mono-tls.h`. Several of
-the later integration edits are described in `patches/README.txt` sections B-E
-(the Win98 compat object added to `mono/mini/Makefile.am`, and so on).
+fixes, SEH logging, WinForms fixes) with:
+
+```
+sh win98/verify-patches.sh /path/to/mono-src          # applies the series
+MODE=check sh win98/verify-patches.sh /path/to/mono-src  # dry-run
+```
+
+The series is generated from the revisions in `UPSTREAM.md` and is checked by
+CI on every push. It normalises the line endings of the touched files (a few
+mono files are stored CRLF) before applying; only line endings change.
+`patches/README.txt` documents every hunk and `patches/notes/` keeps the
+older per-file notes.
 
 ## 2. Configure and build
 
