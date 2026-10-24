@@ -1,0 +1,121 @@
+--- a/external/corefx/src/System.IO.FileSystem/src/System/IO/Enumeration/FileSystemEnumerableFactory.cs
++++ b/external/corefx/src/System.IO.FileSystem/src/System/IO/Enumeration/FileSystemEnumerableFactory.cs
+@@ -1,13 +1,90 @@
+-﻿// Licensed to the .NET Foundation under one or more agreements.
++// Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ // See the LICENSE file ref the project root for more information.
+ 
+ using System.Collections.Generic;
++using System.Runtime.InteropServices;
+ 
+ namespace System.IO.Enumeration
+ {
+     internal static class FileSystemEnumerableFactory
+     {
++        // Win9x fallback: the NT enumerator opens directory handles with
++        // CreateFile(FILE_FLAG_BACKUP_SEMANTICS) + NtQueryDirectoryFile, which
++        // Windows 9x does not support.  Use FindFirstFileW instead.
++        [StructLayout (LayoutKind.Sequential, CharSet = CharSet.Unicode)]
++        private struct Win9xFindData
++        {
++            public uint dwFileAttributes;
++            public uint ftCreationLow, ftCreationHigh;
++            public uint ftAccessLow, ftAccessHigh;
++            public uint ftWriteLow, ftWriteHigh;
++            public uint nFileSizeHigh, nFileSizeLow;
++            public uint dwReserved0, dwReserved1;
++            [MarshalAs (UnmanagedType.ByValTStr, SizeConst = 260)] public string cFileName;
++            [MarshalAs (UnmanagedType.ByValTStr, SizeConst = 14)] public string cAlternateFileName;
++        }
++
++        [DllImport ("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindFirstFileW", SetLastError = true)]
++        private static extern IntPtr Win9xFindFirstFile (string pattern, out Win9xFindData data);
++
++        [DllImport ("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindNextFileW", SetLastError = true)]
++        private static extern bool Win9xFindNextFile (IntPtr handle, out Win9xFindData data);
++
++        [DllImport ("kernel32.dll", EntryPoint = "FindClose", SetLastError = true)]
++        private static extern bool Win9xFindClose (IntPtr handle);
++
++        private static bool IsWin9x {
++            get { return Environment.OSVersion.Version.Major < 5; }
++        }
++
++        private static IEnumerable<string> Win9xEnumerate (string directory, string expression,
++            EnumerationOptions options, bool includeFiles, bool includeDirs)
++        {
++            if (!Directory.Exists (directory))
++                throw new DirectoryNotFoundException (directory);
++            List<string> results = new List<string> ();
++            Win9xEnumerateInto (directory, expression, options, includeFiles, includeDirs, results);
++            return results;
++        }
++
++        private static void Win9xEnumerateInto (string directory, string expression,
++            EnumerationOptions options, bool includeFiles, bool includeDirs, List<string> results)
++        {
++            Win9xFindData data;
++            IntPtr handle = Win9xFindFirstFile (Path.Combine (directory, "*"), out data);
++            if ((long) handle == -1) {
++                int err = Marshal.GetLastWin32Error ();
++                if (options.IgnoreInaccessible && err != 2 && err != 3)
++                    return;
++                throw new IOException ("Cannot enumerate '" + directory + "' (error " + err + ")");
++            }
++            try {
++                do {
++                    string name = data.cFileName;
++                    if (name == "." || name == ".." || string.IsNullOrEmpty (name))
++                        continue;
++                    bool isDir = (data.dwFileAttributes & 0x10) != 0;
++                    if ((data.dwFileAttributes & (uint) options.AttributesToSkip) != 0)
++                        continue;
++                    if ((includeFiles && !isDir) || (includeDirs && isDir))
++                        if (MatchesPattern (expression, name.AsSpan (), options))
++                            results.Add (Path.Combine (directory, name));
++                    if (isDir && options.RecurseSubdirectories) {
++                        try {
++                            Win9xEnumerateInto (Path.Combine (directory, name), expression, options,
++                                includeFiles, includeDirs, results);
++                        } catch (IOException) {
++                            if (!options.IgnoreInaccessible)
++                                throw;
++                        }
++                    }
++                } while (Win9xFindNextFile (handle, out data));
++            } finally {
++                Win9xFindClose (handle);
++            }
++        }
++
+         // These all have special meaning in DOS name matching. '\' is the escaping character (which conveniently
+         // is the directory separator and cannot be part of any path segment in Windows). The other three are the
+         // special case wildcards that we'll convert some * and ? into. They're also valid as filenames on Unix,
+@@ -87,6 +164,8 @@
+             string expression,
+             EnumerationOptions options)
+         {
++            if (IsWin9x)
++                return Win9xEnumerate (directory, expression, options, true, false);
+             return new FileSystemEnumerable<string>(
+                 directory,
+                 (ref FileSystemEntry entry) => entry.ToSpecifiedFullPath(),
+@@ -101,6 +180,8 @@
+             string expression,
+             EnumerationOptions options)
+         {
++            if (IsWin9x)
++                return Win9xEnumerate (directory, expression, options, false, true);
+             return new FileSystemEnumerable<string>(
+                 directory,
+                 (ref FileSystemEntry entry) => entry.ToSpecifiedFullPath(),
+@@ -115,6 +196,8 @@
+             string expression,
+             EnumerationOptions options)
+         {
++            if (IsWin9x)
++                return Win9xEnumerate (directory, expression, options, true, true);
+             return new FileSystemEnumerable<string>(
+                 directory,
+                 (ref FileSystemEntry entry) => entry.ToSpecifiedFullPath(),

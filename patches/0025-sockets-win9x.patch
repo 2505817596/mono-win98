@@ -1,0 +1,15 @@
+--- a/mcs/class/System/System.Net.Sockets/Socket.cs
++++ b/mcs/class/System/System.Net.Sockets/Socket.cs
+@@ -3040,6 +3040,12 @@
+ #if MOBILE
+ 			return true;
+ #else
++			// Win9x: NetworkInterfaceFactory has no implementation below
++			// Windows 5.1 (returns null -> NotImplementedException), and IPv6
++			// does not exist on Windows 9x anyway.
++			if (Environment.OSVersion.Version.Major < 5)
++				return false;
++
+ 			var nics = NetworkInterface.GetAllNetworkInterfaces ();
+ 			foreach (var adapter in nics) {
+ 				if (adapter.Supports (networkInterface))

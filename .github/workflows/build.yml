@@ -1,0 +1,103 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  MONO_REV: 0f53e9e151d92944cacab3e24ac359410c606df6
+  COREFX_REV: c4eeab9fc2faa0195a812e552cd73ee298d39386
+
+jobs:
+  patches:
+    name: patch series
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: fetch pinned mono + corefx
+        run: |
+          set -e
+          curl -sSL -o mono.tar.gz "https://codeload.github.com/mono/mono/tar.gz/$MONO_REV"
+          mkdir -p mono-src
+          tar -xzf mono.tar.gz -C mono-src --strip-components=1
+          curl -sSL -o corefx.tar.gz "https://codeload.github.com/mono/corefx/tar.gz/$COREFX_REV"
+          mkdir -p mono-src/external/corefx
+          tar -xzf corefx.tar.gz -C mono-src/external/corefx --strip-components=1
+
+      - name: verify patches
+        run: sh win98/verify-patches.sh mono-src
+
+  shims:
+    name: shim DLLs (mingw32)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: false
+          install: mingw-w64-i686-gcc
+
+      - name: build shims
+        shell: msys2 {0}
+        run: sh win98/build-shims.sh
+
+      - name: check outputs
+        shell: msys2 {0}
+        run: |
+          set -e
+          for f in k32x.dll w98user.dll w98shl.dll w98adv32.dll \
+                   ole98.dll w98ws2.dll w98crt.dll bcrypt.dll; do
+            test -s "win98/$f"
+          done
+          ls -l win98/*.dll
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win98-shims
+          path: |
+            win98/k32x.dll
+            win98/w98user.dll
+            win98/w98shl.dll
+            win98/w98adv32.dll
+            win98/ole98.dll
+            win98/w98ws2.dll
+            win98/w98crt.dll
+            win98/bcrypt.dll
+
+  runtime:
+    name: runtime build (experimental, manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: false
+          install: >-
+            mingw-w64-i686-gcc make autoconf automake libtool python bison flex pkgconf
+
+      - name: fetch sources
+        shell: msys2 {0}
+        run: |
+          set -e
+          curl -sSL -o /tmp/mono.tar.gz "https://codeload.github.com/mono/mono/tar.gz/$MONO_REV"
+          mkdir -p mono-src
+          tar -xzf /tmp/mono.tar.gz -C mono-src --strip-components=1
+          curl -sSL -o /tmp/corefx.tar.gz "https://codeload.github.com/mono/corefx/tar.gz/$COREFX_REV"
+          mkdir -p mono-src/external/corefx
+          tar -xzf /tmp/corefx.tar.gz -C mono-src/external/corefx --strip-components=1
+
+      - name: apply patches
+        shell: msys2 {0}
+        run: MODE=apply sh win98/verify-patches.sh mono-src
+
+      - name: build runtime
+        shell: msys2 {0}
+        run: MONO_SRC="$PWD/mono-src" OUT="$PWD/out" sh win98/build-runtime.sh

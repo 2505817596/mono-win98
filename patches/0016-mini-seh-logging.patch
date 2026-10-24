@@ -1,0 +1,18 @@
+--- a/mono/mini/exceptions-x86.c
++++ b/mono/mini/exceptions-x86.c
+@@ -12,6 +12,7 @@
+ 
+ #include <glib.h>
+ #include <signal.h>
++#include <stdlib.h>
+ #include <string.h>
+ #ifdef HAVE_UCONTEXT_H
+ #include <ucontext.h>
+@@ -61,6 +62,7 @@
+ 
+ static LONG CALLBACK seh_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
+ {
++	g_async_safe_printf ("MONO98: SEH code=%lx addr=%p i0=%lx i1=%lx | ", ep->ExceptionRecord->ExceptionCode, ep->ExceptionRecord->ExceptionAddress, ep->ExceptionRecord->NumberParameters > 0 ? (unsigned long) ep->ExceptionRecord->ExceptionInformation[0] : 0, ep->ExceptionRecord->NumberParameters > 1 ? (unsigned long) ep->ExceptionRecord->ExceptionInformation[1] : 0);
+ #ifndef MONO_CROSS_COMPILE
+ 	if (mono_old_win_toplevel_exception_filter) {
+ 		return (*mono_old_win_toplevel_exception_filter)(ep);

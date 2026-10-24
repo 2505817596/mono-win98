@@ -1,0 +1,41 @@
+--- a/mcs/build/library.make
++++ b/mcs/build/library.make
+@@ -94,8 +94,8 @@
+ SN = :
+ else
+ ifeq ("$(SN)","")
+-sn = $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/sn.exe
+-SN = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn) -q
++sn = $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/sn.exe
++SN = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(sn) -q
+ endif
+ endif
+ 
+@@ -299,14 +299,14 @@
+ $(build_lib): $(response) $(sn) $(BUILT_SOURCES) $(build_libdir)/.stamp $(GEN_RESOURCE_DEPS) $(MODULE_DEPS)
+ 	$(LIBRARY_COMPILE) $(LIBRARY_FLAGS) $(LIB_MCS_FLAGS) $(KEYFILE_MCS_FLAGS) $(GEN_RESOURCE_FLAGS) -target:library -out:$@ $(BUILT_SOURCES_cmdline) @$(response)
+ ifdef RESOURCE_STRINGS_FILES
+-	$(Q) $(STRING_REPLACER) $(RESOURCE_STRINGS_FILES) $(IL_REPLACE_FILES) $@
+-endif
+-	$(Q) $(SN) -R $@ $(LIBRARY_SNK)
++	$(Q) sleep 0.3; _f=$$(mktemp /tmp/sr.XXXXXX); i=0; while ! $(STRING_REPLACER) $(RESOURCE_STRINGS_FILES) $(IL_REPLACE_FILES) $@ 2>$$_f; do i=$$((i+1)); if [ $$i -ge 60 ] || ! grep -q "Sharing violation" $$_f; then cat $$_f; rm -f $$_f; exit 1; fi; sleep 0.4; done; rm -f $$_f
++endif
++	$(Q) sleep 0.3; _f=$$(mktemp /tmp/snR.XXXXXX); i=0; while ! $(SN) -R $@ $(LIBRARY_SNK) 2>$$_f; do i=$$((i+1)); if [ $$i -ge 60 ] || ! grep -q "Sharing violation" $$_f; then cat $$_f; rm -f $$_f; exit 1; fi; sleep 0.4; done; rm -f $$_f
+ 
+ ifdef LIBRARY_USE_INTERMEDIATE_FILE
+ $(the_lib): $(build_lib)
+ 	$(Q) cp $(build_lib) $@
+-	$(Q) $(SN) -v $@
++	$(Q) _f=$$(mktemp /tmp/snV.XXXXXX); i=0; while ! $(SN) -v $@ 2>$$_f; do i=$$((i+1)); if [ $$i -ge 60 ] || ! grep -q "Sharing violation" $$_f; then cat $$_f; rm -f $$_f; exit 1; fi; sleep 0.4; done; rm -f $$_f
+ 	$(Q) test ! -f $(build_lib).mdb || mv $(build_lib).mdb $@.mdb
+ 	$(Q) test ! -f $(build_lib:.dll=.pdb) || mv $(build_lib:.dll=.pdb) $(the_lib:.dll=.pdb)
+ endif
+@@ -348,7 +348,7 @@
+ 
+ update-corefx-sr-generic:
+ ifneq ($(RESX_STRINGS),)
+-	MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/resx2sr.exe $(RESX_EXTRA_ARGUMENTS) $(RESX_STRINGS) >$(SR_OUTPUT)
++	MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/resx2sr.exe $(RESX_EXTRA_ARGUMENTS) $(RESX_STRINGS) >$(SR_OUTPUT)
+ endif
+ 
+ update-corefx-sr: $(RESX_RESOURCE_STRING) $(XTEST_RESX_RESOURCE_STRING)

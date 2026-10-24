@@ -1,0 +1,42 @@
+--- a/external/corefx/src/System.IO.FileSystem/src/System/IO/Directory.cs
++++ b/external/corefx/src/System.IO.FileSystem/src/System/IO/Directory.cs
+@@ -289,13 +289,39 @@
+         public static void Delete(string path)
+         {
+             string fullPath = Path.GetFullPath(path);
++            if (Environment.OSVersion.Version.Major < 5) {
++                Win9xDelete(fullPath, false);
++                return;
++            }
+             FileSystem.RemoveDirectory(fullPath, false);
+         }
+ 
+         public static void Delete(string path, bool recursive)
+         {
+             string fullPath = Path.GetFullPath(path);
++            if (Environment.OSVersion.Version.Major < 5) {
++                Win9xDelete(fullPath, recursive);
++                return;
++            }
+             FileSystem.RemoveDirectory(fullPath, recursive);
++        }
++
++        // Windows 9x: the corefx recursive delete opens directory handles and
++        // relies on NT error semantics; walk the tree with the managed
++        // enumeration fallback and plain DeleteFile/RemoveDirectory instead.
++        private static void Win9xDelete(string path, bool recursive)
++        {
++            if (!Directory.Exists(path))
++                throw new DirectoryNotFoundException(path);
++            if (recursive) {
++                foreach (string entry in Directory.EnumerateFileSystemEntries(path)) {
++                    if (Directory.Exists(entry))
++                        Win9xDelete(entry, true);
++                    else
++                        File.Delete(entry);
++                }
++            }
++            FileSystem.RemoveDirectory(path, false);
+         }
+ 
+         public static string[] GetLogicalDrives()

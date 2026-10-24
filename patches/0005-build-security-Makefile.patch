@@ -1,0 +1,32 @@
+--- a/mcs/tools/security/Makefile
++++ b/mcs/tools/security/Makefile
+@@ -24,7 +24,7 @@
+ DISTFILES = README TESTS $(SECURITY_SOURCES)
+ 
+ ifeq (build, $(PROFILE))
+-all-local: $(topdir)/class/lib/$(PROFILE)/sn.exe
++all-local: $(topdir)/class/lib/$(PROFILE_DIRECTORY)/sn.exe
+ else
+ all-local: $(SECURITY_TARGETS)
+ endif
+@@ -55,15 +55,15 @@
+ 
+ clean-local:
+ 	rm -f *.exe *.mdb *.pdb
+-	rm -f $(topdir)/class/lib/$(PROFILE)/sn.exe*
++	rm -f $(topdir)/class/lib/$(PROFILE_DIRECTORY)/sn.exe*
+ 
+ dist-local: dist-default
+ 
+-sn.exe $(topdir)/class/lib/$(PROFILE)/sn.exe: $(SN_SOURCES)
+-	$(CSCOMPILE) -r:$(topdir)/class/lib/$(PROFILE)/mscorlib.dll -r:$(topdir)/class/lib/$(PROFILE)/Mono.Security.dll /out:$@ $(SN_SOURCES)
++sn.exe $(topdir)/class/lib/$(PROFILE_DIRECTORY)/sn.exe: $(SN_SOURCES)
++	$(CSCOMPILE) -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/mscorlib.dll -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/Mono.Security.dll /out:$@ $(SN_SOURCES)
+ 
+ permview.exe: permview.cs
+-	$(CSCOMPILE) $^ $(HELPER_SOURCES) -r:$(topdir)/class/lib/$(PROFILE)/mscorlib.dll -r:$(topdir)/class/lib/$(PROFILE)/Mono.Cecil.dll
++	$(CSCOMPILE) $^ $(HELPER_SOURCES) -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/mscorlib.dll -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/Mono.Cecil.dll
+ 
+ %.exe: %.cs $(HELPER_SOURCES)
+-	$(CSCOMPILE) -r:$(topdir)/class/lib/$(PROFILE)/mscorlib.dll -r:$(topdir)/class/lib/$(PROFILE)/Mono.Security.dll -r:$(topdir)/class/lib/$(PROFILE)/System.dll -r:$(topdir)/class/lib/$(PROFILE)/System.Core.dll $^
++	$(CSCOMPILE) -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/mscorlib.dll -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/Mono.Security.dll -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/System.dll -r:$(topdir)/class/lib/$(PROFILE_DIRECTORY)/System.Core.dll $^

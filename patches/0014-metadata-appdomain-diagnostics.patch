@@ -1,0 +1,20 @@
+--- a/mono/metadata/appdomain.c
++++ b/mono/metadata/appdomain.c
+@@ -14,6 +14,9 @@
+  */
+ 
+ #include <config.h>
++/* Win98 diagnostics: only when MONO98_VERBOSE is set (keeps startup console quiet). */
++#define MONO98_PRINT(...) do { if (g_getenv ("MONO98_VERBOSE")) g_printerr (__VA_ARGS__); } while (0)
++
+ #include <glib.h>
+ #include <string.h>
+ #include <errno.h>
+@@ -77,6 +80,7 @@
+ 
+ #ifdef ENABLE_PERFTRACING
+ #include <eventpipe/ds-server.h>
++
+ #endif
+ 
+ #ifdef HOST_WIN32

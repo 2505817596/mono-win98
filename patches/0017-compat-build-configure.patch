@@ -1,6 +1,6 @@
 --- a/configure.ac
 +++ b/configure.ac
-@@ -190,6 +190,12 @@
+@@ -190,6 +190,13 @@
  		libgc_threads=win32
  		with_sigaltstack=no
  		with_tls=pthread
@@ -10,6 +10,7 @@
 +		WIN98_COMPAT_LDFLAGS='-Wl,--allow-multiple-definition'
 +		AC_SUBST(WIN98_COMPAT_OBJ)
 +		AC_SUBST(WIN98_COMPAT_LDFLAGS)
++
  		with_sgen_default_concurrent=yes
  		LN_S=cp
  		;;

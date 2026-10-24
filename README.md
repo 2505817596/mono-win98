@@ -1,5 +1,7 @@
 # Mono 6.13.0 on Windows 98 SE
 
+[![build](https://github.com/2505817596/mono-win98/actions/workflows/build.yml/badge.svg)](https://github.com/2505817596/mono-win98/actions/workflows/build.yml)
+
 Unofficial port of **Mono 6.13.0** and its **System.Windows.Forms** to Windows 98 SE.
 This repository contains the patch set, the Win9x compatibility shims and the test
 applications; prebuilt runtime packages are published as GitHub Releases.
@@ -49,6 +51,8 @@ no WebBrowser engine, some NT-only APIs shimmed as no-ops. See
 ## Repository layout
 
 ```
+UPSTREAM.md  pinned mono/corefx revisions used by the patch series
+.github/     CI: applies the patch series to the pinned tree and builds the shims
 patches/     patch series against mono-6.13.0 + documented runtime/BCL fixes
 win98/       kernel32/user32/... shims, import redirection, build scripts
              (build-runtime.sh, build-shims.sh, build-swf.sh)
@@ -60,11 +64,13 @@ docs/        build notes, developer guide, feature matrix, install notes
 
 ## Building from source
 
-See `docs/BUILDING.md` and `docs/DEVELOPING.md`. In short: fetch the
-mono-6.13.0 source tree, apply `patches/*.patch`, then run
+See `docs/BUILDING.md` and `docs/DEVELOPING.md`. Fetch the mono and corefx
+revisions listed in `UPSTREAM.md`, check the series with
+`win98/verify-patches.sh <mono-src>` and apply it with `MODE=apply`, then run
 `win98/build-runtime.sh` (configure/make/import redirection) and
 `win98/build-shims.sh`; rebuild `System.Windows.Forms.dll` with the .NET
-SDK's Roslyn via `win98/build-swf.sh`.
+SDK's Roslyn via `win98/build-swf.sh`. CI performs the patch check and the
+shim build on every push (`runtime` build is a manual, experimental job).
 
 The exact environment used for the published binaries is described in
 `docs/BUILDING.md`; the build is not a one-command turnkey build.

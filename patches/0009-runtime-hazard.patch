@@ -1,0 +1,39 @@
+--- a/mono/utils/hazard-pointer.c
++++ b/mono/utils/hazard-pointer.c
+@@ -7,6 +7,9 @@
+  */
+ 
+ #include <config.h>
++/* Win98 diagnostics: only when MONO98_VERBOSE is set (keeps startup console quiet). */
++#define MONO98_PRINT(...) do { if (g_getenv ("MONO98_VERBOSE")) g_printerr (__VA_ARGS__); } while (0)
++
+ 
+ #include <string.h>
+ 
+@@ -24,6 +27,7 @@
+ #include <mono/utils/mono-mmap.h>
+ #include <mono/utils/mono-threads.h>
+ #include <mono/utils/mono-counters.h>
++
+ #endif
+ 
+ #if _MSC_VER
+@@ -117,7 +121,8 @@
+ 		 */
+ 		int table_prot = MONO_MMAP_READ | MONO_MMAP_WRITE;
+ #else
+-		int table_prot = MONO_MMAP_NONE;
++		/* Win9x: avoid PROT_NONE + per-page mprotect; allocate directly RW */
++		int table_prot = MONO_MMAP_READ | MONO_MMAP_WRITE;
+ #endif
+ 		int pagesize = mono_pagesize ();
+ 		int num_pages = (hazard_table_size * sizeof (MonoThreadHazardPointers) + pagesize - 1) / pagesize;
+@@ -189,7 +194,7 @@
+ {
+ 	int small_id = mono_thread_info_get_small_id ();
+ 
+-	if (small_id < 0) {
++	if (small_id < 0 || small_id >= hazard_table_size) {
+ 		static MonoThreadHazardPointers emerg_hazard_table;
+ 		g_warning ("Thread %p may have been prematurely finalized\n", (gpointer) (gsize) mono_native_thread_id_get ());
+ 		return &emerg_hazard_table;

@@ -1,0 +1,13 @@
+--- a/mcs/build/executable.make
++++ b/mcs/build/executable.make
+@@ -31,8 +31,8 @@
+ PROGRAM_config := $(build_libdir)$(PROGRAM).config
+ endif
+ 
+-sn = $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/sn.exe
+-SN = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn) -q
++sn = $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/sn.exe
++SN = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(sn) -q
+ 
+ the_lib = $(the_libdir)$(base_prog)
+ build_lib = $(build_libdir)$(base_prog)

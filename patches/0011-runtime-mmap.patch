@@ -1,0 +1,28 @@
+--- a/mono/utils/mono-mmap-windows.c
++++ b/mono/utils/mono-mmap-windows.c
+@@ -10,6 +10,9 @@
+  */
+ 
+ #include <config.h>
++/* Win98 diagnostics: only when MONO98_VERBOSE is set (keeps startup console quiet). */
++#define MONO98_PRINT(...) do { if (g_getenv ("MONO98_VERBOSE")) g_printerr (__VA_ARGS__); } while (0)
++
+ #include <glib.h>
+ 
+ #if defined(HOST_WIN32)
+@@ -19,6 +22,7 @@
+ #include "mono/utils/mono-mmap.h"
+ #include "mono/utils/mono-mmap-internals.h"
+ #include <mono/utils/w32subset.h>
++
+ 
+ static void *malloced_shared_area;
+ 
+@@ -244,6 +248,7 @@
+ #endif
+ 
+ exit:
++	if (ptr == NULL)
+ 	if (!ptr && (mapping || error_message)) {
+ 		int const win32_error = GetLastError ();
+ 		if (mapping)

@@ -1,0 +1,14 @@
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/TextBoxTextRenderer.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/TextBoxTextRenderer.cs
+@@ -53,6 +53,11 @@
+ 				use_textrenderer = false;
+ 			else
+ 				use_textrenderer = true;
++
++			// Win9x/ME: the GDI path (user32!DrawTextW via MSLU) silently
++			// draws nothing here, so fall back to GDI+ text rendering.
++			if (Environment.OSVersion.Version.Major < 5)
++				use_textrenderer = false;
+ 
+ 			// windows 2000 doesn't draw with gdi if bounds are In32.MaxValue
+ 			max_size = new Size (Int16.MaxValue, Int16.MaxValue);

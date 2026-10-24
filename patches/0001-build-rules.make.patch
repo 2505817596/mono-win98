@@ -1,0 +1,47 @@
+--- a/mcs/build/rules.make
++++ b/mcs/build/rules.make
+@@ -28,7 +28,7 @@
+ Q_AOT=$(if $(V),,@echo "AOT     [$(intermediate)$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+ 
+ ifndef BUILD_TOOLS_PROFILE
+-BUILD_TOOLS_PROFILE = build
++BUILD_TOOLS_PROFILE = build-$(HOST_PLATFORM)
+ endif
+ 
+ # NOTE: We have to use conditional functions to branch on the state of ENABLE_COMPILER_SERVER
+@@ -57,10 +57,10 @@
+ # Using CSC_SDK_PATH_DISABLED for sanity check that all references have path specified
+ INTERNAL_CSC = CSC_SDK_PATH_DISABLED= $(RUNTIME) $(RUNTIME_FLAGS) $(CSC_RUNTIME_FLAGS) $(INTERNAL_CSC_LOCATION)
+ 
+-RESGEN = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/resgen.exe
+-STRING_REPLACER = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/cil-stringreplacer.exe
+-ILASM = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/ilasm.exe
+-GENSOURCES = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/gensources.exe
++RESGEN = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/resgen.exe
++STRING_REPLACER = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/cil-stringreplacer.exe
++ILASM = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/ilasm.exe
++GENSOURCES = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/gensources.exe
+ 
+ depsdir = $(topdir)/build/deps
+ 
+@@ -158,8 +158,8 @@
+ ifdef NO_INSTALL
+ GACUTIL = :
+ else
+-gacutil = $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/gacutil.exe
+-GACUTIL = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(gacutil)
++gacutil = $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/gacutil.exe
++GACUTIL = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(gacutil)
+ endif
+ 
+ STD_TARGETS = test xunit-test run-test run-xunit-test run-test-ondotnet clean install uninstall doc-update
+@@ -342,7 +342,7 @@
+ ## Documentation stuff
+ 
+ Q_MDOC =$(if $(V),,@echo "MDOC    [$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+-MDOC   =$(Q_MDOC) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe
++MDOC   =$(Q_MDOC) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe
+ 
+ Q_MDOC_UP=$(if $(V),,@echo "MDOC-UP [$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+-MDOC_UP  =$(Q_MDOC_UP) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe update --delete -o Documentation/en
++MDOC_UP  =$(Q_MDOC_UP) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe update --delete -o Documentation/en

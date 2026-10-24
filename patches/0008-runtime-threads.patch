@@ -1,0 +1,57 @@
+--- a/mono/utils/mono-threads.c
++++ b/mono/utils/mono-threads.c
+@@ -11,6 +11,9 @@
+  */
+ 
+ #include <config.h>
++/* Win98 diagnostics: only when MONO98_VERBOSE is set (keeps startup console quiet). */
++#define MONO98_PRINT(...) do { if (g_getenv ("MONO98_VERBOSE")) g_printerr (__VA_ARGS__); } while (0)
++
+ 
+ /* enable pthread extensions */
+ #ifdef TARGET_MACH
+@@ -40,6 +43,7 @@
+ 
+ #if defined(__MACH__)
+ #include <mono/utils/mach-support.h>
++
+ #endif
+ 
+ #if _MSC_VER
+@@ -549,6 +553,14 @@
+ 	mono_thread_info_suspend_lock ();
+ 	/*If this fail it means a given thread has been registered twice, which doesn't make sense. */
+ 	result = mono_thread_info_insert (info);
++	if (!result) {
++		/* Win9x reuses thread ids aggressively; drop a stale registration. */
++		MonoThreadInfo *old = mono_thread_info_lookup (mono_native_thread_id_get ());
++		if (old && old != info) {
++			mono_thread_info_remove (old);
++			result = mono_thread_info_insert (info);
++		}
++	}
+ 	g_assert (result);
+ 	mono_thread_info_suspend_unlock ();
+ 
+@@ -726,6 +738,10 @@
+ #else
+ 	gpointer val = mono_native_tls_get_value (small_id_key);
+ 	if (!val)
++		return -1;
++	/* Win9x: TlsGetValue may return stale data from another component that used
++	 * this slot before. A valid value is (small_id + 1) with small_id < 16384. */
++	if (((uintptr_t) val) >> 15)
+ 		return -1;
+ 	return GPOINTER_TO_INT (val) - 1;
+ #endif
+@@ -2083,6 +2099,10 @@
+ gboolean
+ mono_thread_info_is_current (MonoThreadInfo *info)
+ {
++	if ((gpointer) info == (gpointer) -1) {
++		MONO98_PRINT ("MONO98: is_current(-1) caller=%p | ", __builtin_return_address (0));
++		return FALSE;
++	}
+ 	return mono_thread_info_get_tid (info) == mono_native_thread_id_get ();
+ }
+ 

@@ -1,7 +1,40 @@
 Mono 6.13.0 → Windows 98 patch set
 ==================================
 
-Baseline: gitlab.winehq.org/mono/mono @ main (6.13.0)
+Baseline: mono/mono @ 0f53e9e151d92944cacab3e24ac359410c606df6 (2024-08-27)
+          + corefx @ c4eeab9fc2faa0195a812e552cd73ee298d39386 (submodule)
+          See ../UPSTREAM.md.
+
+Patch series (apply in order; verified with win98/verify-patches.sh)
+-------------------------------------------------------------------
+  0001-build-rules.make.patch            mcs build: absolute tool/MONO_PATH paths
+  0002-build-library.make.patch          mcs build: signing retries, absolute paths
+  0003-build-executable.make.patch       sn.exe path
+  0004-build-net_4_x.make.patch          bootstrap profile paths
+  0005-build-security-Makefile.patch     PROFILE_DIRECTORY for sn.exe
+  0006-build-rabbitmq-Makefile.patch     same for the RabbitMQ docs build
+  0007-runtime-tls.patch                 Win9x TEB has no NT TLS slots
+  0008-runtime-threads.patch             small_id range checks / cleanup
+  0009-runtime-hazard.patch              hazard table RW + bounds check
+  0010-runtime-filemap.patch             _wfopen fallback
+  0011-runtime-mmap.patch                log file_map failures
+  0012-runtime-dl.patch                  LoadLibraryExA/A fallback for W stubs
+  0013-metadata-object-vtable-align.patch 8-byte MonoVTable alignment
+  0014-metadata-appdomain-diagnostics.patch startup diagnostics (MONO98_VERBOSE)
+  0015-metadata-domain-diagnostics.patch   same
+  0016-mini-seh-logging.patch            SEH fault logging
+  0017-compat-build-configure.patch      WIN98_COMPAT_OBJ/LDFLAGS (compat2.lo)
+  0018-compat-build-mini-Makefile.patch  link compat2.lo into libmonosgen
+  0019-swf-form-activate.patch           WmActivate WA_INACTIVE guard
+  0020-swf-textbox-gdiplus.patch         GDI+ text rendering on Win9x
+  0021-swf-clipboard-codepage.patch      ACP clipboard + WM_USER+3/0x173 async msg
+  0022-swf-ime-dbcs.patch                DBCS WM_CHAR lead/trail pairing
+  0023-corefx-directory-enumeration.patch FindFirstFileW enumerator fallback
+  0024-corefx-directory-delete.patch     recursive delete fallback
+  0025-sockets-win9x.patch               skip NetworkInterface on Win9x
+
+patches/notes/ keeps the older per-hunk descriptions and notes; the numbered
+series above is the authoritative, verified set.
 
 A. Build-system fixes (host=MSYS2/mingw32, i686-w64-mingw32)
 -----------------------------------------------------------
@@ -40,11 +73,11 @@ A. Build-system fixes (host=MSYS2/mingw32, i686-w64-mingw32)
 
 B. Windows 98 compatibility layer
 ---------------------------------
-configure.ac (mingw block):                 patch: configure_ac.patch
+configure.ac (mingw block):                 patch: 0017-compat-build-configure.patch
     WIN98_COMPAT_OBJ='$(top_srcdir)/../win98/compat2.lo'
     WIN98_COMPAT_LDFLAGS='-Wl,--allow-multiple-definition'
     AC_SUBST both
-mono/mini/Makefile.am.in:                   patch: mono_mini_Makefile.am.in.patch
+mono/mini/Makefile.am.in:                   patch: 0018-compat-build-mini-Makefile.patch
     libmonosgen_2_0_la_LIBADD = $(WIN98_COMPAT_OBJ) libmini.la ...
     libmonosgen_2_0_la_LDFLAGS += $(WIN98_COMPAT_LDFLAGS)
     rule: $(top_srcdir)/../win98/compat2.lo from win98/compat2.c
@@ -77,14 +110,14 @@ shim next to mono.exe instead of the system DLL:
 
   KERNEL32.dll → k32x.dll       (19 NT APIs implemented; other 151 exports are
                                  forwarders back to KERNEL32)
-  ADVAPI32.dll → advapi32.dll   5 Win2K security APIs (ACL) → graceful failure
-  OLE32.dll    → ole32.dll      CoInitializeEx, CoCreateFreeThreadedMarshaler
-  WS2_32.dll   → ws2_32.dll     WSASocketW, WSAIoctl, getaddrinfo/freeaddrinfo,
+  ADVAPI32.dll → w98adv32.dll   5 Win2K security APIs (ACL) → graceful failure
+  OLE32.dll    → ole98.dll      CoInitializeEx, CoCreateFreeThreadedMarshaler
+  WS2_32.dll   → w98ws2.dll     WSASocketW, WSAIoctl, getaddrinfo/freeaddrinfo,
                                 getnameinfo
-  SHELL32.dll  → shell32.dll    CommandLineToArgvW, SHGetFolderPathW,
+  SHELL32.dll  → w98shl.dll     CommandLineToArgvW, SHGetFolderPathW,
                                 ShellExecuteExW
   bcrypt.dll   → bcrypt.dll     BCryptGenRandom via CryptGenRandom
-  msvcrt.dll   → msvcrt.dll     _ecvt_s
+  msvcrt.dll   → w98crt.dll     _ecvt_s
 
 E. Runtime / BCL patches added for WinForms
 --------------------------------------------
@@ -95,9 +128,9 @@ E. Runtime / BCL patches added for WinForms
   mono/utils/mono-filemap.c      _wfopen fails on Win9x -> fopen fallback
   mono/utils/mono-mmap-windows.c log file_map failures
   mono/utils/mono-dl-windows.c   LoadLibraryExA/LoadLibraryA fallback for W stubs
-                                 patch: mono_utils_mono-dl-windows.c.patch
+                                 patch: 0012-runtime-dl.patch
   mono/metadata/object.c         alloc_vtable: explicit 8-byte alignment
-                                 patch: mono_metadata_object.c.patch
+                                 patch: 0013-metadata-object-vtable-align.patch
   mono/mini/exceptions-x86.c     SEH filter logging
   mono/metadata/domain.c, appdomain.c   startup diagnostics
   mcs/class/System.Windows.Forms/System.Windows.Forms/Form.cs
@@ -106,32 +139,32 @@ E. Runtime / BCL patches added for WinForms
                                  (Win9x sends WA_INACTIVE synchronously, the old
                                  code recursed Form.Activate -> WM_ACTIVATE ->
                                  Form.Activate until the stack overflowed).
-                                 patch: 0001-SWF-WmActivate-WA_INACTIVE.patch
+                                 patch: 0019-swf-form-activate.patch
   mcs/class/System.Windows.Forms/System.Windows.Forms/TextBoxTextRenderer.cs
                                  use GDI+ (Graphics.DrawString) for TextBox text
                                  when OS major version < 5: the GDI path
                                  (user32!DrawTextW via MSLU) silently renders
                                  nothing on Win9x, leaving text boxes blank.
-                                 patch: 0002-SWF-TextBox-GDIplus-on-Win9x.patch
+                                 patch: 0020-swf-textbox-gdiplus.patch
   mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs
                                  clipboard CF_TEXT <-> string conversion uses
                                  GetACP() (e.g. 936/GBK); the old
                                  Marshal.PtrToStringAnsi path assumed UTF-8 and
                                  threw ExecutionEngineException on non-ASCII
                                  paste.  Needs I18N.CJK.dll for cp936.
-                                 patch: 0003-SWF-clipboard-ANSI-codepage.patch
+                                 patch: 0021-swf-clipboard-codepage.patch
   mcs/class/System.Windows.Forms/System.Windows.Forms/NativeWindow.cs
                                  Win9x IME: pair DBCS lead/trail bytes from
                                  WM_CHAR, decode with GetACP(), re-dispatch a
                                  single Unicode WM_CHAR (fixes Chinese IME
                                  mojibake).  k32x.dll exports IsDBCSLeadByteEx.
-                                 patch: 0004-SWF-IME-DBCS-WM_CHAR.patch
+                                 patch: 0022-swf-ime-dbcs.patch
   mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs
                                  Win9x user32 returns WM_USER+3 (WM_ASYNC_MESSAGE,
                                  used by Control.Invoke/BeginInvoke) as 0x173
                                  from GetMessageA; handle it as WM_ASYNC_MESSAGE
                                  (otherwise Invoke deadlocks).
-                                 patch: 0005-SWF-Win9x-async-message.patch
+                                 patch: 0021-swf-clipboard-codepage.patch
   external/corefx FileSystemEnumerableFactory.cs + Directory.cs
                                  Win9x directory enumeration / recursive delete
                                  fallback using FindFirstFileW (the NT enumerator
@@ -139,7 +172,8 @@ E. Runtime / BCL patches added for WinForms
   mcs/class/System/System.Net.Sockets/Socket.cs
                                  skip NetworkInterface on Windows 9x (factory is
                                  XP+ only) so Socket construction works.
-                                 patch: 0006-runtime-Win9x-IO-sockets.patch
+                                 patches: 0023-corefx-directory-enumeration.patch,
+                                 0024-corefx-directory-delete.patch, 0025-sockets-win9x.patch
   win98/compat2.c                GetSystemTimes must not return FALSE: mono_cpu_usage
                                  calls g_error() and aborts when the thread pool
                                  computes CPU load.  Emulate with GetTickCount.

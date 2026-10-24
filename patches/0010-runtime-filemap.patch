@@ -1,0 +1,11 @@
+--- a/mono/utils/mono-filemap.c
++++ b/mono/utils/mono-filemap.c
+@@ -34,6 +34,8 @@
+ 	if (wname == NULL)
+ 		return NULL;
+ 	result = (MonoFileMap *) _wfopen ((wchar_t *) wname, L"rb");
++	if (result == NULL)
++		result = (MonoFileMap *) fopen (name, "rb");  /* Win9x: _wfopen is broken */
+ 	g_free (wname);
+ 	return result;
+ #else

@@ -1,0 +1,86 @@
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/NativeWindow.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/NativeWindow.cs
+@@ -36,11 +36,20 @@
+ using System.Collections;
+ using System.Diagnostics;
+ using System.Drawing;
++using System.Text;
+ 
+ namespace System.Windows.Forms
+ {
+ 	public class NativeWindow : MarshalByRefObject, IWin32Window
+ 	{
++		// Win9x ANSI windows deliver WM_CHAR as one byte per DBCS element;
++		// combine lead/trail pairs into a single Unicode character.
++		static readonly bool win9x_dbcs = Environment.OSVersion.Version.Major < 5;
++		static int win9x_lead_byte;
++		static bool win9x_converting;
++		static Encoding win9x_ansi;
++		static int win9x_acp = -1;
++
+ 		IntPtr window_handle = IntPtr.Zero;
+ 		static Hashtable window_collection = new Hashtable();
+ 
+@@ -211,8 +220,62 @@
+ 			DefWndProc(ref m);
+ 		}
+ 
++		[DllImport ("kernel32.dll", EntryPoint="GetACP", CallingConvention=CallingConvention.StdCall)]
++		static extern uint Win32GetACP ();
++
++		[DllImport ("kernel32.dll", EntryPoint="IsDBCSLeadByteEx", CallingConvention=CallingConvention.StdCall)]
++		static extern bool Win32IsDBCSLeadByteEx (uint CodePage, byte TestChar);
++
++		static bool TryWin9xDBCS (IntPtr hWnd, Msg msg, IntPtr wParam, IntPtr lParam)
++		{
++			if (msg != Msg.WM_CHAR)
++				return false;
++			int b = (int)wParam & 0xFF;
++			if (win9x_lead_byte != 0) {
++				byte lead = (byte) win9x_lead_byte;
++				win9x_lead_byte = 0;
++				string s = null;
++				if (win9x_ansi == null) {
++					try {
++						if (win9x_acp < 0)
++							win9x_acp = (int) Win32GetACP ();
++						win9x_ansi = Encoding.GetEncoding (win9x_acp);
++					} catch {
++						win9x_ansi = null;
++					}
++				}
++				if (win9x_ansi != null) {
++					try { s = win9x_ansi.GetString (new byte [] { lead, (byte) b }); } catch { s = null; }
++				}
++				win9x_converting = true;
++				try {
++					if (s != null && s.Length > 0) {
++						WndProc (hWnd, Msg.WM_CHAR, (IntPtr) s [0], lParam);
++					} else {
++						WndProc (hWnd, Msg.WM_CHAR, (IntPtr) lead, lParam);
++						WndProc (hWnd, Msg.WM_CHAR, (IntPtr) b, lParam);
++					}
++				} finally {
++					win9x_converting = false;
++				}
++				return true;
++			}
++			if (b >= 0x80) {
++				if (win9x_acp < 0) {
++					try { win9x_acp = (int) Win32GetACP (); } catch { win9x_acp = 0; }
++				}
++				if (win9x_acp > 0 && Win32IsDBCSLeadByteEx ((uint) win9x_acp, (byte) b)) {
++					win9x_lead_byte = b;
++					return true;
++				}
++			}
++			return false;
++		}
++
+ 		internal static IntPtr WndProc(IntPtr hWnd, Msg msg, IntPtr wParam, IntPtr lParam)
+ 		{
++			if (win9x_dbcs && !win9x_converting && TryWin9xDBCS (hWnd, msg, wParam, lParam))
++				return IntPtr.Zero;
+ 			IntPtr result = IntPtr.Zero;
+ 			Message	m = new Message();
+ 			m.HWnd = hWnd;
