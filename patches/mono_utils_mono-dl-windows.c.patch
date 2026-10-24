@@ -1,0 +1,15 @@
+--- a/mono/utils/mono-dl-windows.c
++++ b/mono/utils/mono-dl-windows.c
+@@ -59,6 +59,12 @@
+ 
+ #if HAVE_API_SUPPORT_WIN32_LOAD_LIBRARY
+ 		hModule = LoadLibraryExW (file_utf16, NULL, flags);
++		if (!hModule) {
++			/* Win9x: the W variant is a non-functional stub. */
++			hModule = LoadLibraryExA (file, NULL, flags);
++			if (!hModule)
++				hModule = LoadLibraryA (file);
++		}
+ #elif HAVE_API_SUPPORT_WIN32_LOAD_PACKAGED_LIBRARY
+ 		hModule = LoadPackagedLibrary (file_utf16, NULL);
+ #else

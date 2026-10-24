@@ -50,19 +50,21 @@ no WebBrowser engine, some NT-only APIs shimmed as no-ops. See
 
 ```
 patches/     patch series against mono-6.13.0 + documented runtime/BCL fixes
-win98/       kernel32/user32/... shims, import redirection, build helpers
+win98/       kernel32/user32/... shims, import redirection, build scripts
+             (build-runtime.sh, build-shims.sh, build-swf.sh)
 projects/    self tests and demos (SelfTest, RuntimeSelfTest, GCTest,
              ControlDemo, MiniCtx context-menu repro)
-docs/        build notes, feature matrix, install/runtime notes
+samples/     minimal app showing how to build against the runtime
+docs/        build notes, developer guide, feature matrix, install notes
 ```
 
 ## Building from source
 
-See `docs/BUILDING.md`. In short: fetch the mono-6.13.0 source tree, apply
-`patches/*.patch`, cross-build with MSYS2 `i686-w64-mingw32`, build the shim
-DLLs from `win98/`, redirect the PE imports (`win98/redirect_dlls.py`), and
-rebuild `System.Windows.Forms.dll` with the .NET SDK's Roslyn
-(`win98/build-swf.sh`).
+See `docs/BUILDING.md` and `docs/DEVELOPING.md`. In short: fetch the
+mono-6.13.0 source tree, apply `patches/*.patch`, then run
+`win98/build-runtime.sh` (configure/make/import redirection) and
+`win98/build-shims.sh`; rebuild `System.Windows.Forms.dll` with the .NET
+SDK's Roslyn via `win98/build-swf.sh`.
 
 The exact environment used for the published binaries is described in
 `docs/BUILDING.md`; the build is not a one-command turnkey build.

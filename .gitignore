@@ -31,3 +31,6 @@ desktop.ini
 !docs/*.txt
 !docs/*.md
 !*.md
+
+# script build temp
+.tmp/

@@ -1,0 +1,18 @@
+--- a/mono/mini/Makefile.am.in
++++ b/mono/mini/Makefile.am.in
+@@ -771,8 +771,13 @@
+ libmonosgen_2_0_la_SOURCES =
+ libmonosgen_2_0_la_CFLAGS = $(mono_sgen_CFLAGS) @CXX_ADD_CFLAGS@
+ 
+-libmonosgen_2_0_la_LIBADD = libmini.la $(interp_libs_with_mini) $(dbg_libs_with_mini) $(sgen_libs) $(LIBMONO_DTRACE_OBJECT) $(LLVMMONOF)
+-libmonosgen_2_0_la_LDFLAGS = $(libmonoldflags) $(monobin_platform_ldflags) $(CCLDFLAGS)
++libmonosgen_2_0_la_LIBADD = $(WIN98_COMPAT_OBJ) libmini.la $(interp_libs_with_mini) $(dbg_libs_with_mini) $(sgen_libs) $(LIBMONO_DTRACE_OBJECT) $(LLVMMONOF)
++libmonosgen_2_0_la_LDFLAGS = $(libmonoldflags) $(monobin_platform_ldflags) $(CCLDFLAGS) $(WIN98_COMPAT_LDFLAGS)
++
++# Win98/ME compatibility object (NT-only kernel32 APIs), built from
++# win98/compat2.c.  Empty WIN98_COMPAT_OBJ on non-mingw builds.
++$(top_srcdir)/../win98/compat2.lo:
++	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) -c $(top_srcdir)/../win98/compat2.c -o $@
+ libmonosgen_2_0_la_LIBTOOLFLAGS = $(MONO_LIBTOOL_TAG)
+ 
+ noinst_LIBRARIES += libmaintest.a

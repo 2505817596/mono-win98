@@ -1,0 +1,15 @@
+--- a/configure.ac
++++ b/configure.ac
+@@ -190,6 +190,12 @@
+ 		libgc_threads=win32
+ 		with_sigaltstack=no
+ 		with_tls=pthread
++
++		# Win98/ME compatibility layer: implements NT-only APIs the runtime imports
++		WIN98_COMPAT_OBJ='$(top_srcdir)/../win98/compat2.lo'
++		WIN98_COMPAT_LDFLAGS='-Wl,--allow-multiple-definition'
++		AC_SUBST(WIN98_COMPAT_OBJ)
++		AC_SUBST(WIN98_COMPAT_LDFLAGS)
+ 		with_sgen_default_concurrent=yes
+ 		LN_S=cp
+ 		;;

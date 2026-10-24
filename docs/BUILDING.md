@@ -12,6 +12,10 @@ one-command build.
 - .NET SDK 8+ (Roslyn) for rebuilding `System.Windows.Forms.dll`.
 - A Windows 98 SE test machine/VM.
 
+The steps below are also packaged as `win98/build-runtime.sh` (configure,
+build, import redirection) and `win98/build-shims.sh` (all shim DLLs).
+`win98/build-swf.sh` rebuilds System.Windows.Forms.
+
 ## 1. Patch the mono source
 
 Apply the patch series in `patches/` (build-system fixes, Win9x TLS/threads/GC
@@ -54,13 +58,15 @@ The sources are in `win98/`:
 Build each as a shared DLL with the mingw32 toolchain, e.g.:
 
 ```
-i686-w64-mingw32-gcc -O2 -shared -o k32x.dll shim.c k32x.def \
-  -Wl,--enable-stdcall-fixup -L. -ludep -lunicows_dep
+sh win98/build-shims.sh
 ```
 
-The original binaries import `msvcrt.dll`; the toolchain must target the
-msvcrt CRT (`-mcrtdll=msvcrt` on recent mingw-w64, or an equivalent
-msvcrt-capable toolchain). The prebuilt shim DLLs are in the release archives.
+The script generates the MSLU import libraries (`udep.def`,
+`unicows_dep.def`), links with `-nostdlib -lmsvcrt-os` and the msvcrt stdio
+(`-D__USE_MINGW_ANSI_STDIO=0`), and passes `DllMain` as the entry point.
+This is the recipe used for the released DLLs; the rebuilt set was validated
+on Win98 SE (RuntimeSelfTest 36/36, SelfTest 32/32, GCTest 8/8, MiniCtx).
+`w98gdi.dll` is a def-only forwarder and is shipped as a prebuilt binary.
 
 ## 4. Redirect native imports
 

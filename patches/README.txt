@@ -40,14 +40,14 @@ A. Build-system fixes (host=MSYS2/mingw32, i686-w64-mingw32)
 
 B. Windows 98 compatibility layer
 ---------------------------------
-configure.ac (mingw block):
+configure.ac (mingw block):                 patch: configure_ac.patch
     WIN98_COMPAT_OBJ='$(top_srcdir)/../win98/compat2.lo'
-    AC_SUBST(WIN98_COMPAT_OBJ)
-
-mono/mini/Makefile.am:
+    WIN98_COMPAT_LDFLAGS='-Wl,--allow-multiple-definition'
+    AC_SUBST both
+mono/mini/Makefile.am.in:                   patch: mono_mini_Makefile.am.in.patch
     libmonosgen_2_0_la_LIBADD = $(WIN98_COMPAT_OBJ) libmini.la ...
-mono/mini/Makefile (generated): same, plus
-    libmonosgen_2_0_la_LDFLAGS += -Wl,--allow-multiple-definition
+    libmonosgen_2_0_la_LDFLAGS += $(WIN98_COMPAT_LDFLAGS)
+    rule: $(top_srcdir)/../win98/compat2.lo from win98/compat2.c
 
 win98/compat2.c defines the 19 NT-only kernel32 entry points under their real
 names; with --allow-multiple-definition the linker prefers these over the
@@ -95,7 +95,9 @@ E. Runtime / BCL patches added for WinForms
   mono/utils/mono-filemap.c      _wfopen fails on Win9x -> fopen fallback
   mono/utils/mono-mmap-windows.c log file_map failures
   mono/utils/mono-dl-windows.c   LoadLibraryExA/LoadLibraryA fallback for W stubs
+                                 patch: mono_utils_mono-dl-windows.c.patch
   mono/metadata/object.c         alloc_vtable: explicit 8-byte alignment
+                                 patch: mono_metadata_object.c.patch
   mono/mini/exceptions-x86.c     SEH filter logging
   mono/metadata/domain.c, appdomain.c   startup diagnostics
   mcs/class/System.Windows.Forms/System.Windows.Forms/Form.cs

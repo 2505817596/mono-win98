@@ -1,0 +1,21 @@
+--- a/mono/metadata/object.c
++++ b/mono/metadata/object.c
+@@ -1988,7 +1988,17 @@
+ 		alloc_offset = 0;
+ 	}
+ 
+-	return (gpointer*) ((char*)mono_domain_alloc0 (domain, vtable_size) + alloc_offset);
++	/* Win9x allocators may only guarantee 4-byte alignment, but SGen uses the
++	 * low three address bits of the vtable pointer. Align explicitly. */
++	{
++		char *raw = (char*) mono_domain_alloc0 (domain, vtable_size + 8);
++		gsize target = ((gsize) raw + 7) & ~(gsize) 7;
++		int guard = 0;
++
++		while (((target + imt_table_bytes) & 7) != 0 && guard++ < 8)
++			target += 4;
++		return (gpointer*) target;
++	}
+ }
+ 
+ static MonoVTable *
