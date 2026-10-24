@@ -1,0 +1,90 @@
+--- /d/mono/mcs/build/library.make	2026-07-19 19:06:31.541337800 +0800
++++ src/mono-src/mcs/build/library.make	2026-10-23 02:55:10.559950700 +0800
+@@ -13,9 +13,6 @@
+ # LIB_REFS      - This should be a space separated list of assembly names which are added to the mcs
+ #                 command line.
+ #
+-# LIB_IS_VB     - Use vbc to compile.
+-# LIB_VBC_FLAGS - Command line flags passed to vbc.
+-#
+ 
+ LIB_REFS_FULL = $(call _FILTER_OUT,=, $(LIB_REFS)) $(DEFAULT_REFERENCES)
+ LIB_REFS_ALIAS = $(filter-out $(LIB_REFS_FULL),$(LIB_REFS))
+@@ -71,10 +68,6 @@
+ ifeq ($(LIBRARY_WARN_AS_ERROR),yes)
+ ifndef MCS_MODE
+ LIB_MCS_FLAGS += -warnaserror
+-else
+-ifdef LIB_IS_VB
+-LIB_VBC_FLAGS += -warnaserror
+-endif
+ endif
+ endif
+ endif
+@@ -101,8 +94,8 @@
+ SN = :
+ else
+ ifeq ("$(SN)","")
+-sn = $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/sn.exe
+-SN = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn) -q
++sn = $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/sn.exe
++SN = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(sn) -q
+ endif
+ endif
+ 
+@@ -230,7 +223,7 @@
+ # make dist will collect files in .sources files from all profiles
+ dist-local: dist-default
+ 	subs=' ' ; \
+-	for f in `$(topdir)/tools/removecomments.sh $(filter-out $(wildcard *_test.dll.sources) $(wildcard *_xtest.dll.sources) $(wildcard *_vbtest.dll.sources) $(wildcard *exclude.sources),$(wildcard *.sources))` $(TEST_FILES) ; do \
++	for f in `$(topdir)/tools/removecomments.sh $(filter-out $(wildcard *_test.dll.sources) $(wildcard *_xtest.dll.sources) $(wildcard *exclude.sources),$(wildcard *.sources))` $(TEST_FILES) ; do \
+ 	  case $$f in \
+ 	  ../*) : ;; \
+ 	  *.g.cs) : ;; \
+@@ -242,12 +235,8 @@
+ 	  case $$d in .) : ;; *) test ! -f $$d/ChangeLog || cp -p $$d/ChangeLog $(distdir)/$$d ;; esac ; done
+ 
+ ifndef LIBRARY_COMPILE
+-ifdef LIB_IS_VB
+-LIBRARY_COMPILE = $(VBCOMPILE)
+-else
+ LIBRARY_COMPILE = $(CSCOMPILE)
+ endif
+-endif
+ 
+ ifndef LIBRARY_SNK
+ LIBRARY_SNK = $(topdir)/class/mono.snk
+@@ -307,21 +296,17 @@
+ 
+ ifndef NO_BUILD
+ 
+-ifdef LIB_IS_VB
+-LIB_MCS_FLAGS += $(LIB_VBC_FLAGS)
+-endif
+-
+ $(build_lib): $(response) $(sn) $(BUILT_SOURCES) $(build_libdir)/.stamp $(GEN_RESOURCE_DEPS) $(MODULE_DEPS)
+ 	$(LIBRARY_COMPILE) $(LIBRARY_FLAGS) $(LIB_MCS_FLAGS) $(KEYFILE_MCS_FLAGS) $(GEN_RESOURCE_FLAGS) -target:library -out:$@ $(BUILT_SOURCES_cmdline) @$(response)
+ ifdef RESOURCE_STRINGS_FILES
+-	$(Q) $(STRING_REPLACER) $(RESOURCE_STRINGS_FILES) $(IL_REPLACE_FILES) $@
++	$(Q) sleep 0.3; _f=$$(mktemp /tmp/sr.XXXXXX); i=0; while ! $(STRING_REPLACER) $(RESOURCE_STRINGS_FILES) $(IL_REPLACE_FILES) $@ 2>$$_f; do i=$$((i+1)); if [ $$i -ge 60 ] || ! grep -q "Sharing violation" $$_f; then cat $$_f; rm -f $$_f; exit 1; fi; sleep 0.4; done; rm -f $$_f
+ endif
+-	$(Q) $(SN) -R $@ $(LIBRARY_SNK)
++	$(Q) sleep 0.3; _f=$$(mktemp /tmp/snR.XXXXXX); i=0; while ! $(SN) -R $@ $(LIBRARY_SNK) 2>$$_f; do i=$$((i+1)); if [ $$i -ge 60 ] || ! grep -q "Sharing violation" $$_f; then cat $$_f; rm -f $$_f; exit 1; fi; sleep 0.4; done; rm -f $$_f
+ 
+ ifdef LIBRARY_USE_INTERMEDIATE_FILE
+ $(the_lib): $(build_lib)
+ 	$(Q) cp $(build_lib) $@
+-	$(Q) $(SN) -v $@
++	$(Q) _f=$$(mktemp /tmp/snV.XXXXXX); i=0; while ! $(SN) -v $@ 2>$$_f; do i=$$((i+1)); if [ $$i -ge 60 ] || ! grep -q "Sharing violation" $$_f; then cat $$_f; rm -f $$_f; exit 1; fi; sleep 0.4; done; rm -f $$_f
+ 	$(Q) test ! -f $(build_lib).mdb || mv $(build_lib).mdb $@.mdb
+ 	$(Q) test ! -f $(build_lib:.dll=.pdb) || mv $(build_lib:.dll=.pdb) $(the_lib:.dll=.pdb)
+ endif
+@@ -363,7 +348,7 @@
+ 
+ update-corefx-sr-generic:
+ ifneq ($(RESX_STRINGS),)
+-	MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/resx2sr.exe $(RESX_EXTRA_ARGUMENTS) $(RESX_STRINGS) >$(SR_OUTPUT)
++	MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/resx2sr.exe $(RESX_EXTRA_ARGUMENTS) $(RESX_STRINGS) >$(SR_OUTPUT)
+ endif
+ 
+ update-corefx-sr: $(RESX_RESOURCE_STRING) $(XTEST_RESX_RESOURCE_STRING)

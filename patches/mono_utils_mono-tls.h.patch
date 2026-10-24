@@ -1,0 +1,46 @@
+--- /d/mono/mono/utils/mono-tls.h	2026-07-19 19:06:41.233917800 +0800
++++ mono/utils/mono-tls.h	2026-10-23 18:27:07.143079900 +0800
+@@ -59,7 +59,20 @@
+ #undef TlsSetValue
+ 
+ #define MonoNativeTlsKey DWORD
+-#define mono_native_tls_alloc(key,destructor) ((*(key) = TlsAlloc ()) != TLS_OUT_OF_INDEXES && destructor == NULL)
++/* Win9x: TLS slot 0 gets clobbered by other components; never use it. */
++static __inline gboolean
++mono98_native_tls_alloc (DWORD *key)
++{
++	DWORD k;
++	do {
++		k = TlsAlloc ();
++	} while (k == 0);
++	if (k == TLS_OUT_OF_INDEXES)
++		return FALSE;
++	*key = k;
++	return TRUE;
++}
++#define mono_native_tls_alloc(key,destructor) (destructor == NULL ? mono98_native_tls_alloc (key) : ((*(key) = TlsAlloc ()) != TLS_OUT_OF_INDEXES && destructor == NULL))
+ #define mono_native_tls_free TlsFree
+ #define mono_native_tls_set_value TlsSetValue
+ 
+@@ -86,14 +99,13 @@
+ void*
+ mono_native_tls_get_value (unsigned index)
+ {
+-	PTEB const teb = NtCurrentTeb ();
+-
+-	if (index < TLS_MINIMUM_AVAILABLE)
+-		return teb->TlsSlots [index];
+-
+-	void** const p = (void**)teb->TlsExpansionSlots;
+-
+-	return p ? p [index - TLS_MINIMUM_AVAILABLE] : NULL;
++	/* Windows 9x/ME: the NT TEB layout does not apply, so read the value
++	 * through the API instead of TlsSlots. Preserve LastError, which
++	 * TlsGetValue clobbers. */
++	DWORD err = GetLastError ();
++	void *value = TlsGetValue (index);
++	SetLastError (err);
++	return value;
+ }
+ 
+ #else

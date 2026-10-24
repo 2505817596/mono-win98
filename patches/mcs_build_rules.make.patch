@@ -1,0 +1,72 @@
+--- /d/mono/mcs/build/rules.make	2026-07-19 19:06:31.544337500 +0800
++++ src/mono-src/mcs/build/rules.make	2026-10-23 01:36:59.344379300 +0800
+@@ -25,11 +25,10 @@
+ Q=$(if $(V),,@)
+ # echo -e "\\t" does not work on some systems, so use 5 spaces
+ Q_MCS=$(if $(V),,@echo "$(if $(MCS_MODE),MCS,CSC)     [$(intermediate)$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+-Q_VBC=$(if $(V),,@echo "VBC     [$(intermediate)$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+ Q_AOT=$(if $(V),,@echo "AOT     [$(intermediate)$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+ 
+ ifndef BUILD_TOOLS_PROFILE
+-BUILD_TOOLS_PROFILE = build
++BUILD_TOOLS_PROFILE = build-$(HOST_PLATFORM)
+ endif
+ 
+ # NOTE: We have to use conditional functions to branch on the state of ENABLE_COMPILER_SERVER
+@@ -43,12 +42,8 @@
+ CSC_LOCATION = $(if $(findstring 1,$(ENABLE_COMPILER_SERVER)),$(SERVER_CSC_LOCATION),$(STANDALONE_CSC_LOCATION))
+ 
+ USE_MCS_FLAGS = $(COMPILER_SERVER_ARGS) /codepage:$(CODEPAGE) /nologo /noconfig /deterministic $(LOCAL_MCS_FLAGS) $(PLATFORM_MCS_FLAGS) $(PROFILE_MCS_FLAGS) $(MCS_FLAGS)
+-USE_VBC_FLAGS = /codepage:$(CODEPAGE) /nologo /noconfig /deterministic $(LOCAL_VBC_FLAGS) $(PLATFORM_VBC_FLAGS) $(PROFILE_VBC_FLAGS) $(VBC_FLAGS)
+ USE_CFLAGS = $(LOCAL_CFLAGS) $(CFLAGS) $(CPPFLAGS)
+ CSCOMPILE = $(Q_MCS) $(MCS) $(USE_MCS_FLAGS)
+-VBCOMPILE = $(Q_VBC) $(BOOTSTRAP_PATH) $(RUNTIME) $(RUNTIME_FLAGS) $(VBC_LOCATION) $(USE_VBC_FLAGS)
+-VB_RUNTIME_PATH = $(topdir)/class/lib/$(PROFILE)/Microsoft.VisualBasic.dll
+-VB_RUNTIME_FLAGS = -vbruntime:$(VB_RUNTIME_PATH)
+ CSC_RUNTIME_FLAGS = --aot-path=$(abspath $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)) --gc-params=nursery-size=64m
+ CCOMPILE = $(CC) $(USE_CFLAGS)
+ BOOT_COMPILE = $(Q_MCS) $(BOOTSTRAP_MCS) $(USE_MCS_FLAGS)
+@@ -62,10 +57,10 @@
+ # Using CSC_SDK_PATH_DISABLED for sanity check that all references have path specified
+ INTERNAL_CSC = CSC_SDK_PATH_DISABLED= $(RUNTIME) $(RUNTIME_FLAGS) $(CSC_RUNTIME_FLAGS) $(INTERNAL_CSC_LOCATION)
+ 
+-RESGEN = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/resgen.exe
+-STRING_REPLACER = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/cil-stringreplacer.exe
+-ILASM = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/ilasm.exe
+-GENSOURCES = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/gensources.exe
++RESGEN = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/resgen.exe
++STRING_REPLACER = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/cil-stringreplacer.exe
++ILASM = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/ilasm.exe
++GENSOURCES = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/gensources.exe
+ 
+ depsdir = $(topdir)/build/deps
+ 
+@@ -74,7 +69,6 @@
+ export PROFILE
+ export MCS
+ export MCS_FLAGS
+-export VBC_FLAGS
+ export CC
+ export CFLAGS
+ export INSTALL
+@@ -164,8 +158,8 @@
+ ifdef NO_INSTALL
+ GACUTIL = :
+ else
+-gacutil = $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/gacutil.exe
+-GACUTIL = MONO_PATH="$(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(gacutil)
++gacutil = $(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)/gacutil.exe
++GACUTIL = MONO_PATH="$(abspath $(topdir))/class/lib/$(BUILD_TOOLS_PROFILE)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(RUNTIME_FLAGS) $(gacutil)
+ endif
+ 
+ STD_TARGETS = test xunit-test run-test run-xunit-test run-test-ondotnet clean install uninstall doc-update
+@@ -348,7 +342,7 @@
+ ## Documentation stuff
+ 
+ Q_MDOC =$(if $(V),,@echo "MDOC    [$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+-MDOC   =$(Q_MDOC) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe
++MDOC   =$(Q_MDOC) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe
+ 
+ Q_MDOC_UP=$(if $(V),,@echo "MDOC-UP [$(PROFILE_DIRECTORY)] $(notdir $(@))";)
+-MDOC_UP  =$(Q_MDOC_UP) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe update --delete -o Documentation/en
++MDOC_UP  =$(Q_MDOC_UP) MONO_PATH="$(topdir)/class/lib/$(PROFILE_DIRECTORY)$${MONO_PATH:+$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH}" $(RUNTIME) $(topdir)/class/lib/$(PROFILE_DIRECTORY)/mdoc.exe update --delete -o Documentation/en

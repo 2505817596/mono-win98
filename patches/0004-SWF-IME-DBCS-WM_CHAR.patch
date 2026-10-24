@@ -1,0 +1,35 @@
+mcs/class/System.Windows.Forms/System.Windows.Forms/NativeWindow.cs:
+combine DBCS lead/trail bytes from WM_CHAR into one Unicode character.
+
+Win98 delivers IME-committed text to ANSI windows as one WM_CHAR per byte
+of the DBCS character.  Mono appended each byte as if it were a Unicode
+code point, so typing "你好" showed "ÄãºÃ" (mojibake).
+
+NativeWindow.WndProc now pairs lead/trail bytes on Win9x (OS major < 5),
+decodes them with Encoding.GetEncoding(GetACP()) and re-dispatches a single
+WM_CHAR carrying the Unicode character.  Non-DBCS characters (ASCII) pass
+through unchanged.
+
+Requires k32x.dll export IsDBCSLeadByteEx (added) and I18N.CJK.dll for
+code page 936.
+
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/NativeWindow.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/NativeWindow.cs
+@@ -42,6 +42,13 @@
+ 	public class NativeWindow : MarshalByRefObject, IWin32Window
+ 	{
++		// Win9x ANSI windows deliver WM_CHAR as one byte per DBCS element;
++		// combine lead/trail pairs into a single Unicode character.
++		static readonly bool win9x_dbcs = Environment.OSVersion.Version.Major < 5;
++		static int win9x_lead_byte;
++		static bool win9x_converting;
++		static Encoding win9x_ansi;
++		static int win9x_acp = -1;
++
+@@ -214,6 +221,9 @@
+ 		internal static IntPtr WndProc(IntPtr hWnd, Msg msg, IntPtr wParam, IntPtr lParam)
+ 		{
++			if (win9x_dbcs && !win9x_converting && TryWin9xDBCS (hWnd, msg, wParam, lParam))
++				return IntPtr.Zero;
++
+ 			IntPtr result = IntPtr.Zero;

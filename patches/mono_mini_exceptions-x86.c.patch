@@ -1,0 +1,10 @@
+--- /d/mono/mono/mini/exceptions-x86.c	2026-07-19 19:06:40.988274600 +0800
++++ mono/mini/exceptions-x86.c	2026-10-23 19:11:26.463462700 +0800
+@@ -61,6 +61,7 @@
+ 
+ static LONG CALLBACK seh_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
+ {
++	g_async_safe_printf ("MONO98: SEH code=%lx addr=%p i0=%lx i1=%lx | ", ep->ExceptionRecord->ExceptionCode, ep->ExceptionRecord->ExceptionAddress, ep->ExceptionRecord->NumberParameters > 0 ? (unsigned long) ep->ExceptionRecord->ExceptionInformation[0] : 0, ep->ExceptionRecord->NumberParameters > 1 ? (unsigned long) ep->ExceptionRecord->ExceptionInformation[1] : 0);
+ #ifndef MONO_CROSS_COMPILE
+ 	if (mono_old_win_toplevel_exception_filter) {
+ 		return (*mono_old_win_toplevel_exception_filter)(ep);

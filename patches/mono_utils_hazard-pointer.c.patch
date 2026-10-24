@@ -1,0 +1,29 @@
+--- /d/mono/mono/utils/hazard-pointer.c	2026-07-19 19:06:41.209078000 +0800
++++ mono/utils/hazard-pointer.c	2026-10-23 16:56:50.299298900 +0800
+@@ -103,6 +103,7 @@
+ 	if (small_id_next >= small_id_table->size)
+ 		small_id_next = 0;
+ 
++	g_printerr ("MONO98: sidalloc id=%d size=%u next=%d | ", id, (unsigned) small_id_table->size, small_id_next);
+ 	g_assert (id < HAZARD_TABLE_MAX_SIZE);
+ 	if (id >= hazard_table_size) {
+ #if MONO_SMALL_CONFIG
+@@ -117,7 +118,8 @@
+ 		 */
+ 		int table_prot = MONO_MMAP_READ | MONO_MMAP_WRITE;
+ #else
+-		int table_prot = MONO_MMAP_NONE;
++		/* Win9x: avoid PROT_NONE + per-page mprotect; allocate directly RW */
++		int table_prot = MONO_MMAP_READ | MONO_MMAP_WRITE;
+ #endif
+ 		int pagesize = mono_pagesize ();
+ 		int num_pages = (hazard_table_size * sizeof (MonoThreadHazardPointers) + pagesize - 1) / pagesize;
+@@ -189,7 +191,7 @@
+ {
+ 	int small_id = mono_thread_info_get_small_id ();
+ 
+-	if (small_id < 0) {
++	if (small_id < 0 || small_id >= hazard_table_size) {
+ 		static MonoThreadHazardPointers emerg_hazard_table;
+ 		g_warning ("Thread %p may have been prematurely finalized\n", (gpointer) (gsize) mono_native_thread_id_get ());
+ 		return &emerg_hazard_table;

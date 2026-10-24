@@ -1,0 +1,63 @@
+mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs:
+decode/encode CF_TEXT with the system ANSI code page.
+
+On Win9x the clipboard holds CF_TEXT in the system ANSI code page (e.g.
+936/GBK on Chinese Windows).  AnsiToString used Marshal.PtrToStringAnsi,
+whose conversion treats the bytes as UTF-8 on this build and aborts with
+
+    System.ExecutionEngineException: String conversion error:
+    Illegal byte sequence encounted in the input.
+
+as soon as non-ASCII text is pasted.  StringToAnsi had the mirror problem
+(UTF-8 bytes stored into CF_TEXT).
+
+Both directions now use Encoding.GetEncoding(GetACP()).  This requires the
+I18N.CJK.dll assembly (now shipped in lib/mono/4.5) for code page 936.
+
+--- a/mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs
++++ b/mcs/class/System.Windows.Forms/System.Windows.Forms/XplatUIWin32.cs
+@@ -938,8 +938,29 @@
+ 		internal static String AnsiToString(IntPtr ansi_data) {
+-			return (string)Marshal.PtrToStringAnsi(ansi_data);
++			if (ansi_data == IntPtr.Zero)
++				return null;
++			// Win9x/ME: clipboard CF_TEXT is in the system ANSI code page
++			// (e.g. 936 for Chinese).  Marshal.PtrToStringAnsi assumes UTF-8
++			// here and throws ExecutionEngineException ("Illegal byte
++			// sequence") on non-ASCII text, so decode via GetACP.
++			int len = 0;
++			while (Marshal.ReadByte (ansi_data, len) != 0)
++				len++;
++			if (len == 0)
++				return String.Empty;
++			byte [] bytes = new byte [len];
++			Marshal.Copy (ansi_data, bytes, 0, len);
++			try {
++				return Encoding.GetEncoding ((int) Win32GetACP ()).GetString (bytes);
++			} catch {
++				return (string)Marshal.PtrToStringAnsi(ansi_data);
++			}
+ 		}
+@@ -3004,10 +3025,13 @@
+ 		internal static byte[] StringToAnsi (string text)
+ 		{
+-			// FIXME, follow the behaviour of the previous code using UTF-8,
+-			// but this should be 'ANSI' on Windows, i.e. the current code page.
+-			// Does Encoding.Default work on Windows?
+-			return Encoding.UTF8.GetBytes (text + "\0");
++			// CF_TEXT must be in the system ANSI code page, not UTF-8.
++			try {
++				return Encoding.GetEncoding ((int) Win32GetACP ()).GetBytes (text + "\0");
++			} catch {
++				return Encoding.UTF8.GetBytes (text + "\0");
++			}
+ 		}
+@@ -3657,6 +3681,9 @@
+ 		[DllImport ("kernel32.dll", EntryPoint="GlobalAlloc", CallingConvention=CallingConvention.StdCall)]
+ 		internal extern static IntPtr Win32GlobalAlloc(GAllocFlags Flags, int dwBytes);
++
++		[DllImport ("kernel32.dll", EntryPoint="GetACP", CallingConvention=CallingConvention.StdCall)]
++		internal extern static uint Win32GetACP();
+ 
+ 		[DllImport ("kernel32.dll", EntryPoint="CopyMemory", CallingConvention=CallingConvention.StdCall)]
+ 		internal extern static void Win32CopyMemory(IntPtr Destination, IntPtr Source, int length);

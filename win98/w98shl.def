@@ -1,0 +1,9 @@
+LIBRARY w98shl.dll
+EXPORTS
+    CommandLineToArgvW
+    SHGetFolderPathW
+    ShellExecuteExW
+    DragAcceptFiles=SHELL32.DragAcceptFiles
+    DragQueryFileW=UNICOWS.DragQueryFileW
+    SHCreateStdEnumFmtEtc=SHELL32.SHCreateStdEnumFmtEtc
+    Shell_NotifyIconW=UNICOWS.Shell_NotifyIconW

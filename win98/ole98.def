@@ -1,0 +1,8 @@
+LIBRARY ole98.dll
+EXPORTS
+    CoCreateFreeThreadedMarshaler
+    CoInitializeEx
+    CoTaskMemAlloc=OLE32.CoTaskMemAlloc
+    CoTaskMemFree=OLE32.CoTaskMemFree
+    CoTaskMemRealloc=OLE32.CoTaskMemRealloc
+    CoUninitialize=OLE32.CoUninitialize
